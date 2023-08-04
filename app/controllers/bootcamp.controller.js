@@ -1,87 +1,120 @@
-const {
-  users,
-  bootcamps
-} = require('../models')
-const db = require('../models')
-const Bootcamp = db.bootcamps
-const User = db.users
+const { User } = require('../models/user.model.js');
+const { Bootcamp } = require('../models/bootcamp.model.js');
 
-// Crear y guardar un nuevo bootcamp
-exports.createBootcamp = (bootcamp) => {
-  return Bootcamp.create({
-      title: bootcamp.title,
-      cue: bootcamp.cue,
-      description: bootcamp.description,
-    })
-    .then(bootcamp => {
-      console.log(`>> Creado el bootcamp: ${JSON.stringify(bootcamp, null, 4)}`)
-      return bootcamp
-    })
-    .catch(err => {
-      console.log(`>> Error al crear el bootcamp: ${err}`)
-    })
-}
 
-// Agregar un Usuario al Bootcamp
-exports.addUser = (bootcampId, userId) => {
-  return Bootcamp.findByPk(bootcampId)
-    .then((bootcamp) => {
-      if (!bootcamp) {
-        console.log("No se encontro el Bootcamp!");
-        return null;
-      }
-      return User.findByPk(userId).then((user) => {
-        if (!user) {
-          console.log("Usuario no encontrado!");
-          return null;
-        }
-        bootcamp.addUser(user);
-        console.log('***************************')
-        console.log(` Agregado el usuario id=${user.id} al bootcamp con id=${bootcamp.id}`);
-        console.log('***************************')
-        return bootcamp;
-      });
-    })
-    .catch((err) => {
-      console.log(">> Error mientras se estaba agregando Usuario al Bootcamp", err);
+const createBootcamp = async (req, res) => {
+  try {
+    const { title, cue, description } = req.body;
+
+    if (!title || !cue || !description) {
+      return res.status(400).json({ error: "Todos los campos son requeridos" });
+    }
+
+    const createdBootcamp = await Bootcamp.create({
+      title,
+      cue,
+      description,
     });
+
+    res.status(201).json(createdBootcamp);
+  } catch (err) {
+    if (err.name === 'SequelizeValidationError') {
+      res.status(400).json({ error: "Error de validación al crear el bootcamp", message: err.message });
+    } else {
+      res.status(500).json({ error: "Error al crear el bootcamp" });
+    }
+  }
 };
 
 
-// obtener los bootcamp por id 
-exports.findById = (Id) => {
-  return Bootcamp.findByPk(Id, {
+const addUser = async (req, res) => {
+  try {
+    const { id, user_id } = req.body;
+    const bootcampId = parseInt(id, 10);
+    const userId = parseInt(user_id, 10);
+    if (isNaN(bootcampId) || bootcampId <= 0 || isNaN(userId) || userId <= 0) {
+      return res.status(400).json({ error: "Los campos 'id' y 'user_id' deben ser números enteros válidos y mayores que cero." });
+    }
+
+    const bootcamp = await Bootcamp.findByPk(bootcampId);
+    if (!bootcamp) {
+      return res.status(404).json({ error: "No se encontró el Bootcamp" });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    await bootcamp.addUser(user);
+
+    const message = `Agregado el usuario id: ${user.id} al bootcamp con id: ${bootcamp.id}`;
+    return res.status(200).json({ message });
+  } catch (err) {
+    return res.status(500).json({ error: "Error mientras se estaba agregando Usuario al Bootcamp" });
+  }
+};
+
+
+const findById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const bootcampId = parseInt(id, 10);
+
+    if (isNaN(bootcampId) || bootcampId <= 0) {
+      return res.status(400).json({ error: "El parámetro 'id' debe ser un número entero válido y mayor que cero." });
+    }
+
+    const bootcamp = await Bootcamp.findByPk(bootcampId, {
       include: [{
         model: User,
-        as: "users",
         attributes: ["id", "firstName", "lastName"],
         through: {
           attributes: [],
         }
-      }, ],
-    })
-    .then(bootcamp => {
-      return bootcamp
-    })
-    .catch(err => {
-      console.log(`>> Error mientras se encontraba el bootcamp: ${err}`)
-    })
-}
+      }],
+    });
 
-// obtener todos los Usuarios incluyendo los Bootcamp
-exports.findAll = () => {
-  return Bootcamp.findAll({
-    include: [{
-      model: User,
-      as: "users",
-      attributes: ["id", "firstName", "lastName"],
-      through: {
-        attributes: [],
-      }
-    }, ],
-  }).then(bootcamps => {
-    return bootcamps
-  }).catch((err) => {
-    console.log(">> Error Buscando los Bootcamps: ", err);
-  });
+    if (!bootcamp) {
+      return res.status(404).json({ error: "Bootcamp no encontrado" });
+    }
+
+    res.status(200).json(bootcamp);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener el bootcamp" });
+  }
+};
+
+
+const findAll = async (req, res) => {
+  try {
+    const bootcamps = await Bootcamp.findAll({
+      include: [{
+        model: User,
+        attributes: ["id", "firstName", "lastName"],
+        through: {
+          attributes: [],
+        }
+      }],
+    });
+    res.status(200).json(bootcamps);
+  } catch (error) {
+    if (error.name === 'SequelizeDatabaseError') {
+      return res.status(500).json({
+        message: "Error en la consulta a la base de datos",
+        code: 500,
+        name: error.name,
+        mensajePersonalizado: "Error al obtener los bootcamps",
+      });
+    }
+  }
+};
+
+
+
+module.exports = {
+  findAll,
+  findById,
+  addUser,
+  createBootcamp
 }

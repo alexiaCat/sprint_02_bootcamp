@@ -1,37 +1,46 @@
-const dbConfig = require('../config/db.config')
-const Sequelize = require('sequelize')
-
-const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
-  host: dbConfig.HOST,
-  dialect: dbConfig.dialect,
-  operatorAliases: false,
-
-  pool: {
-    max: dbConfig.max,
-    min: dbConfig.min,
-    acquire: dbConfig.acquire,
-    idle: dbConfig.idle
-  }
-})
-
-const db = {}
-
-db.Sequelize = Sequelize
-db.sequelize = sequelize
-
-db.users = require('./user.model')(sequelize, Sequelize)
-db.bootcamps = require('./bootcamp.model')(sequelize, Sequelize)
+const express = require('express');
+const { userRouter } = require('../routes/user.routes.js');
+const { bootcampRouter } = require('../routes/bootcamp.routes.js');
+const { User } = require('./user.model.js');
+const { Bootcamp } = require('./bootcamp.model.js');
 
 
-db.users.belongsToMany(db.bootcamps, {
-  through: "user_bootcamp",
-  as: "bootcamps",
-  foreignKey: "user_id",
-});
-db.bootcamps.belongsToMany(db.users, {
-  through: "user_bootcamp",
-  as: "users",
-  foreignKey: "bootcamp_id",
-});
+class Index {
+    constructor() {
+        this.app = express();
+        this.port = process.env.PORT || 3500;
+        this.middlewares();
+        this.routes();
+        this.setupDatabase();
+    }
 
-module.exports = db
+    middlewares() {
+        this.app.use(express.static('public'));
+        this.app.use(express.json());
+    }
+
+    routes() {
+        this.app.use('/', userRouter);
+        this.app.use('/', bootcampRouter);
+    }
+
+    setupDatabase() {
+        User.belongsToMany(Bootcamp, {
+            through: "user_bootcamp",
+            foreignKey: "user_id",
+        });
+
+        Bootcamp.belongsToMany(User, {
+            through: "user_bootcamp",
+            foreignKey: "bootcamp_id",
+        });
+    }
+
+    listen() {
+        this.app.listen(this.port, () => {
+            console.log(`Server is running on port ${this.port}`);
+        });
+    }
+}
+
+module.exports = Index;

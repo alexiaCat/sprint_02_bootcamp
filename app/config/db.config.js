@@ -1,16 +1,20 @@
-require('dotenv').config();
+const Sequelize = require('sequelize')
+const dotenv = require("dotenv");
+
+dotenv.config();
 
 
-module.exports = {
-  HOST: process.env.HOST,
-  USER: process.env.USER,
-  PASSWORD: process.env.PASSWORD,
-  DB: process.env.DB,
-  dialect: process.env.DIALECT,
-  pool: {
-    max: process.env.POOL_MAX,
-    min: process.env.POOL_MIN,
-    acquire: process.env.POOL_ACQUIRE,
-    idle: process.env.POOL_IDLE
-  }
-}
+const sequelize = new Sequelize({
+  host: process.env.HOST,
+  username: process.env.USER,
+  port: process.env.DB_PORT,
+  password: process.env.PASSWORD,
+  database: 'db_jwtbootcamp',
+  dialect: 'postgres',
+});
+
+sequelize.options.logging = (query) => {
+
+};
+
+module.exports = sequelize;
