@@ -48,8 +48,7 @@ const addUser = async (req, res) => {
 
     await bootcamp.addUser(user);
 
-    const message = `Agregado el usuario id: ${user.id} al bootcamp con id: ${bootcamp.id}`;
-    return res.status(200).json({ message });
+    return res.status(200).json(bootcamp);
   } catch (err) {
     return res.status(500).json({ error: "Error mientras se estaba agregando Usuario al Bootcamp" });
   }

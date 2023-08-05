@@ -53,17 +53,25 @@ const signin = async (req, res) => {
 
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: "Correo o contraseña incorrecta" });
+      return res.status(401).json({ error: "Usuario no registrado" });
     }
 
     const passCrypt = bcrypt.compareSync(password, user.password);
     if (!passCrypt) {
-      return res.status(401).json({ error: "Correo o contraseña incorrecta" });
+      return res.status(401).json({ error: "Usuario no registrado" });
     }
 
-    const token = await generateJWT(user.id);
+    const accessToken  = await generateJWT(user.id);
 
-    res.json({ msg: 'Log exitoso, se genero el token', token });
+    const response = {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      accessToken: accessToken,
+    };
+
+    res.json(response);
   } catch (err) {
     res.status(500).json({ error: "Usuario no registrado" });
   }
